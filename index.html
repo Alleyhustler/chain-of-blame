@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chain of Blame</title>
+    <link href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@100..800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
+    <script src="https://unpkg.com/@solana/wallet-adapter-wallets@latest/lib/index.iife.min.js"></script>
+    <script src="https://unpkg.com/@solana/wallet-adapter-base@latest/lib/index.iife.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #46330b;
+            --secondary-color: #2c2414;
+            --accent-color: rgb(255, 238, 0);
+            --solana-green: #8d7717;
+            --text-color: #f1f1f1;
+            --border-color: #0a0c0e;
+            --success-color: #000000;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+  font-family: "Martian Mono", monospace;
+        }
+        
+        body {
+            background-color: var(--primary-color);
+            color: var(--text-color);
+            background-image: url('a.png');
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            flex: 1;
+        }
+        
+        header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 30px;
+        }
+        
+        .logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+        
+        .logo {
+            width: 60px;
+            height: 60px;
+            background-image: url('av.png');
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 24px;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            letter-spacing: 2px;
+            margin-bottom: 5px;
+            background: linear-gradient(90deg, var(--accent-color), var(--solana-green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .subtitle {
+            color: #aaa;
+            font-style: italic;
+            margin-bottom: 15px;
+        }
+        
+        .header-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+        }
+        
+        .twitter-link {
+            color: var(--text-color);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .twitter-link:hover {
+            color: #1DA1F2;
+        }
+        
+        .wallet-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .wallet-address {
+            background-color: var(--secondary-color);
+            padding: 8px 12px;
+            border-radius: 5px;
+            border: 1px solid var(--border-color);
+            font-size: 0.9rem;
+        }
+        
+        .connect-wallet {
+            background: linear-gradient(135deg, var(--accent-color), var(--solana-green));
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .connect-wallet:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 10px rgba(153, 69, 255, 0.5);
+        }
+        
+        .disconnect-wallet {
+            background-color: transparent;
+            color: var(--accent-color);
+            border: 1px solid var(--accent-color);
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 30px;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .ledger-section {
+            background-color: var(--secondary-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .section-title {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: var(--solana-green);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+        
+        .round-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: rgba(15, 52, 96, 0.3);
+            border-radius: 5px;
+        }
+        
+        .round-timer {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--accent-color);
+        }
+        
+        .round-number {
+            font-size: 1.2rem;
+        }
+        
+        .ledger {
+            margin-bottom: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            padding: 10px;
+        }
+        
+        .ledger-entry {
+            padding: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+        }
+        
+        .ledger-entry:last-child {
+            border-bottom: none;
+        }
+        
+        .blame-indicator {
+            background: linear-gradient(135deg, var(--accent-color), var(--solana-green));
+            color: white;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 0.8rem;
+            margin-left: 10px;
+        }
+        
+        .pass-blame-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .pass-blame-btn {
+            background: linear-gradient(135deg, var(--accent-color), var(--solana-green));
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .pass-blame-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(153, 69, 255, 0.7);
+        }
+        
+        .pass-blame-btn:disabled {
+            background: #555;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .system-log {
+            background-color: #000;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            padding: 10px;
+            height: 120px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            color: var(--solana-green);
+        }
+        
+        .log-timestamp {
+            color: #888;
+        }
+        
+        .history-section, .law-section {
+            background-color: var(--secondary-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        
+        .history-list {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .history-item {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .history-item:last-child {
+            border-bottom: none;
+        }
+        
+        .law-text {
+            line-height: 1.6;
+            color: #ccc;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background-color: var(--secondary-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+        
+        .modal-title {
+            font-size: 1.3rem;
+            color: var(--solana-green);
+        }
+        
+        .close-modal {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        
+        .wallet-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+        
+        .wallet-option {
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .wallet-option:hover {
+            background-color: rgba(15, 52, 96, 0.3);
+        }
+        
+        .wallet-option.selected {
+            background-color: rgba(153, 69, 255, 0.2);
+            border-color: var(--accent-color);
+        }
+        
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .modal-btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .modal-btn.primary {
+            background: linear-gradient(135deg, var(--accent-color), var(--solana-green));
+            color: white;
+        }
+        
+        .modal-btn.secondary {
+            background-color: #555;
+            color: white;
+        }
+        
+        .round-end-message {
+            text-align: center;
+            padding: 20px;
+            background-color: rgba(153, 69, 255, 0.1);
+            border: 1px solid var(--accent-color);
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        
+        .round-end-title {
+            font-size: 1.5rem;
+            color: var(--accent-color);
+            margin-bottom: 10px;
+        }
+        
+        .wallet-selector {
+            position: absolute;
+            background-color: var(--secondary-color);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            padding: 10px;
+            margin-top: 5px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 100;
+            display: none;
+        }
+        
+        .wallet-option-btn {
+            display: block;
+            width: 100%;
+            padding: 8px 12px;
+            background: none;
+            border: none;
+            color: var(--text-color);
+            text-align: left;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+        
+        .wallet-option-btn:hover {
+            background-color: rgba(153, 69, 255, 0.2);
+        }
+        
+        footer {
+            text-align: center;
+            padding: 20px;
+            margin-top: 30px;
+            border-top: 1px solid var(--border-color);
+            color: #888;
+            font-size: 0.9rem;
+        }
+        
+        .solana-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background-color: rgba(0, 255, 163, 0.1);
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 0.8rem;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo-container">
+                <h1>Chain of Blame</h1>
+            </div>
+            <p class="subtitle">Responsibility is transferable.</p>
+            <div class="header-controls">
+                <a href="https://x.com/ChainOfBlame" class="twitter-link" target="_blank">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                    </svg>
+                    @ChainOfBlame
+                </a>
+                <div class="wallet-container">
+                    <div class="wallet-address" id="walletAddress" style="display: none;"></div>
+                    <button class="connect-wallet" id="connectWallet">Connect Wallet</button>
+                    <button class="disconnect-wallet" id="disconnectWallet" style="display: none;">Disconnect</button>
+                    <div class="wallet-selector" id="walletSelector">
+                        <button class="wallet-option-btn" data-wallet="phantom">Phantom</button>
+                        <button class="wallet-option-btn" data-wallet="solflare">Solflare</button>
+                        <button class="wallet-option-btn" data-wallet="backpack">Backpack</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <div class="main-content">
+            <div class="ledger-section">
+                <h2 class="section-title">The Blame Ledger</h2>
+                
+                <div class="round-info">
+                    <div class="round-number">Round #<span id="roundNumber">35</span></div>
+                    <div class="round-timer" id="roundTimer">03:00</div>
+                </div>
+                
+                <div class="ledger" id="blameLedger">
+                    <!-- Ledger entries will be dynamically added here -->
+                </div>
+                
+                <div class="pass-blame-container">
+                    <button class="pass-blame-btn" id="passBlameBtn" disabled>Pass Blame</button>
+                </div>
+                
+                <div class="system-log" id="systemLog">
+                    <!-- System messages will be dynamically added here -->
+                </div>
+            </div>
+            
+            <div class="sidebar">
+                <div class="history-section">
+                    <h2 class="section-title">Blame History</h2>
+                    <div class="history-list" id="blameHistory">
+                        <!-- History items will be dynamically added here -->
+                    </div>
+                </div>
+                
+                <div class="law-section">
+                    <h2 class="section-title">The Law of Blame</h2>
+                    <div class="law-text">
+                        <p>In Chain of Blame, guilt is currency.</p>
+                        <p>Each participant can pass responsibility once per round.</p>
+                        <p>If you still hold it when the clock hits zero, the fine executes automatically.</p>
+                        <p>There is no appeal.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Round End Message (initially hidden) -->
+        <div class="round-end-message" id="roundEndMessage" style="display: none;">
+            <h3 class="round-end-title">[ROUND END]</h3>
+            <p>Final blame holder: <span id="finalBlameHolder">9hq5r...X32e</span></p>
+            <p>Fine executed: -0.01 SOL deducted.</p>
+        </div>
+    </div>
+    
+    <!-- Pass Blame Modal -->
+    <div class="modal" id="passBlameModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Pass the Blame</h3>
+                <button class="close-modal" id="closeModal">&times;</button>
+            </div>
+            <p>Select a wallet to pass the blame to:</p>
+            <div class="wallet-list" id="walletList">
+                <!-- Wallet options will be dynamically added here -->
+            </div>
+            <div class="modal-actions">
+                <button class="modal-btn secondary" id="cancelBlame">Cancel</button>
+                <button class="modal-btn primary" id="confirmBlame" disabled>Confirm</button>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <p>Chain of Blame &copy; 2023 | A digital tribunal of responsibility <span class="solana-badge">Powered by Solana</span></p>
+    </footer>
+
+    <script>
+        // Game state
+        const gameState = {
+            roundNumber: 35,
+            roundDuration: 180, // 3 minutes in seconds
+            timeRemaining: 180,
+            isRoundActive: true,
+            wallets: [
+                { address: "9hq5r...X32e", isHoldingBlame: false },
+                { address: "7C1d2...D2A3", isHoldingBlame: false },
+                { address: "94E9b...9B74", isHoldingBlame: true },
+                { address: "3C89a...9A7B", isHoldingBlame: false },
+                { address: "1A9d9...D92C", isHoldingBlame: false }
+            ],
+            blameChain: [
+                { from: "9hq5r...X32e", to: "7C1d2...D2A3", timestamp: Date.now() - 10000 },
+                { from: "7C1d2...D2A3", to: "94E9b...9B74", timestamp: Date.now() - 3000 }
+            ],
+            history: [
+                { round: 32, loser: "1A9d9...D92C", fine: 0.01 },
+                { round: 33, loser: "8C3e0...E02F", fine: 0.02 },
+                { round: 34, loser: "94E9b...9B74", fine: 0.01 }
+            ],
+            connectedWallet: null,
+            selectedWallet: null,
+            timerInterval: null
+        };
+
+        // DOM Elements
+        const roundNumberEl = document.getElementById('roundNumber');
+        const roundTimerEl = document.getElementById('roundTimer');
+        const blameLedgerEl = document.getElementById('blameLedger');
+        const passBlameBtn = document.getElementById('passBlameBtn');
+        const systemLogEl = document.getElementById('systemLog');
+        const blameHistoryEl = document.getElementById('blameHistory');
+        const roundEndMessageEl = document.getElementById('roundEndMessage');
+        const finalBlameHolderEl = document.getElementById('finalBlameHolder');
+        const passBlameModal = document.getElementById('passBlameModal');
+        const closeModalBtn = document.getElementById('closeModal');
+        const walletListEl = document.getElementById('walletList');
+        const cancelBlameBtn = document.getElementById('cancelBlame');
+        const confirmBlameBtn = document.getElementById('confirmBlame');
+        const connectWalletBtn = document.getElementById('connectWallet');
+        const disconnectWalletBtn = document.getElementById('disconnectWallet');
+        const walletAddressEl = document.getElementById('walletAddress');
+        const walletSelectorEl = document.getElementById('walletSelector');
+
+        // Initialize the game
+        function initGame() {
+            // Load state from localStorage if available
+            const savedState = localStorage.getItem('chainOfBlameState');
+            if (savedState) {
+                const parsedState = JSON.parse(savedState);
+                Object.assign(gameState, parsedState);
+            }
+
+            updateRoundInfo();
+            renderBlameLedger();
+            renderBlameHistory();
+            updatePassBlameButton();
+            startTimer();
+            addSystemLog("[SYSTEM] Chain of Blame initialized.");
+            addSystemLog("[SYSTEM] Round #" + gameState.roundNumber + " in progress.");
+            
+            // Simulate initial blame assignment
+            setTimeout(() => {
+                addSystemLog("[SYSTEM] Blame randomly assigned to " + gameState.wallets.find(w => w.isHoldingBlame).address);
+            }, 1000);
+        }
+
+        // Update round information display
+        function updateRoundInfo() {
+            roundNumberEl.textContent = gameState.roundNumber;
+            
+            const minutes = Math.floor(gameState.timeRemaining / 60);
+            const seconds = gameState.timeRemaining % 60;
+            roundTimerEl.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        // Render the blame ledger
+        function renderBlameLedger() {
+            blameLedgerEl.innerHTML = '';
+            
+            // Add current blame chain entries
+            gameState.blameChain.forEach(entry => {
+                const timeAgo = Math.floor((Date.now() - entry.timestamp) / 1000);
+                const ledgerEntry = document.createElement('div');
+                ledgerEntry.className = 'ledger-entry';
+                ledgerEntry.innerHTML = `
+                    ${entry.from} → ${entry.to} (Passed ${timeAgo}s ago)
+                `;
+                blameLedgerEl.appendChild(ledgerEntry);
+            });
+            
+            // Add current blame holder
+            const currentBlameHolder = gameState.wallets.find(w => w.isHoldingBlame);
+            if (currentBlameHolder) {
+                const ledgerEntry = document.createElement('div');
+                ledgerEntry.className = 'ledger-entry';
+                ledgerEntry.innerHTML = `
+                    ${currentBlameHolder.address} → <span class="blame-indicator">Holding Blame</span>
+                `;
+                blameLedgerEl.appendChild(ledgerEntry);
+            }
+        }
+
+        // Render blame history
+        function renderBlameHistory() {
+            blameHistoryEl.innerHTML = '';
+            
+            gameState.history.forEach(item => {
+                const historyItem = document.createElement('div');
+                historyItem.className = 'history-item';
+                historyItem.innerHTML = `
+                    Round #${item.round} — Loser: ${item.loser} — Fine paid ${item.fine.toFixed(2)} SOL
+                `;
+                blameHistoryEl.appendChild(historyItem);
+            });
+        }
+
+        // Update the Pass Blame button state
+        function updatePassBlameButton() {
+            if (gameState.connectedWallet) {
+                const userWallet = gameState.wallets.find(w => w.address === gameState.connectedWallet);
+                passBlameBtn.disabled = !userWallet || !userWallet.isHoldingBlame || !gameState.isRoundActive;
+            } else {
+                passBlameBtn.disabled = true;
+            }
+        }
+
+        // Start the round timer
+        function startTimer() {
+            if (gameState.timerInterval) {
+                clearInterval(gameState.timerInterval);
+            }
+            
+            gameState.timerInterval = setInterval(() => {
+                if (gameState.timeRemaining > 0) {
+                    gameState.timeRemaining--;
+                    updateRoundInfo();
+                    
+                    // Simulate random blame passing (5% chance every 10 seconds)
+                    if (gameState.timeRemaining % 10 === 0 && Math.random() < 0.05) {
+                        simulateRandomBlamePass();
+                    }
+                } else {
+                    endRound();
+                }
+                
+                // Save state to localStorage
+                localStorage.setItem('chainOfBlameState', JSON.stringify(gameState));
+            }, 1000);
+        }
+
+        // Simulate a random blame pass (for demo purposes)
+        function simulateRandomBlamePass() {
+            if (!gameState.isRoundActive) return;
+            
+            const blameHolder = gameState.wallets.find(w => w.isHoldingBlame);
+            if (!blameHolder) return;
+            
+            const availableWallets = gameState.wallets.filter(w => w.address !== blameHolder.address);
+            if (availableWallets.length === 0) return;
+            
+            const randomWallet = availableWallets[Math.floor(Math.random() * availableWallets.length)];
+            
+            // Update game state
+            blameHolder.isHoldingBlame = false;
+            randomWallet.isHoldingBlame = true;
+            
+            // Add to blame chain
+            gameState.blameChain.push({
+                from: blameHolder.address,
+                to: randomWallet.address,
+                timestamp: Date.now()
+            });
+            
+            // Update UI
+            renderBlameLedger();
+            updatePassBlameButton();
+            
+            // Add system log
+            addSystemLog(`[SYSTEM] ${blameHolder.address} passed blame to ${randomWallet.address}`);
+        }
+
+        // End the current round
+        function endRound() {
+            clearInterval(gameState.timerInterval);
+            gameState.isRoundActive = false;
+            
+            const blameHolder = gameState.wallets.find(w => w.isHoldingBlame);
+            if (blameHolder) {
+                // Show round end message
+                roundEndMessageEl.style.display = 'block';
+                finalBlameHolderEl.textContent = blameHolder.address;
+                
+                // Add to history
+                gameState.history.unshift({
+                    round: gameState.roundNumber,
+                    loser: blameHolder.address,
+                    fine: 0.01
+                });
+                
+                // Update history display
+                renderBlameHistory();
+                
+                // Add system log
+                addSystemLog(`[ROUND END] Final blame holder: ${blameHolder.address}`);
+                addSystemLog(`[ROUND END] Fine executed: -0.01 SOL deducted.`);
+                
+                // Start next round after a delay
+                setTimeout(startNewRound, 5000);
+            }
+        }
+
+        // Start a new round
+        function startNewRound() {
+            gameState.roundNumber++;
+            gameState.timeRemaining = gameState.roundDuration;
+            gameState.isRoundActive = true;
+            
+            // Reset blame chain
+            gameState.blameChain = [];
+            
+            // Randomly assign blame
+            const randomIndex = Math.floor(Math.random() * gameState.wallets.length);
+            gameState.wallets.forEach((wallet, index) => {
+                wallet.isHoldingBlame = index === randomIndex;
+            });
+            
+            // Update UI
+            roundEndMessageEl.style.display = 'none';
+            updateRoundInfo();
+            renderBlameLedger();
+            updatePassBlameButton();
+            startTimer();
+            
+            // Add system logs
+            addSystemLog("[SYSTEM] New round initiated.");
+            addSystemLog("[SYSTEM] Blame randomly assigned to " + gameState.wallets[randomIndex].address);
+        }
+
+        // Add a message to the system log
+        function addSystemLog(message) {
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            
+            const timestamp = new Date().toLocaleTimeString();
+            logEntry.innerHTML = `<span class="log-timestamp">[${timestamp}]</span> ${message}`;
+            
+            systemLogEl.appendChild(logEntry);
+            systemLogEl.scrollTop = systemLogEl.scrollHeight;
+        }
+
+        // Open the Pass Blame modal
+        function openPassBlameModal() {
+            if (!gameState.connectedWallet) return;
+            
+            // Populate wallet list (excluding current user's wallet)
+            walletListEl.innerHTML = '';
+            gameState.wallets
+                .filter(wallet => wallet.address !== gameState.connectedWallet)
+                .forEach(wallet => {
+                    const walletOption = document.createElement('div');
+                    walletOption.className = 'wallet-option';
+                    walletOption.textContent = wallet.address;
+                    walletOption.dataset.address = wallet.address;
+                    
+                    walletOption.addEventListener('click', () => {
+                        // Deselect all options
+                        document.querySelectorAll('.wallet-option').forEach(opt => {
+                            opt.classList.remove('selected');
+                        });
+                        
+                        // Select this option
+                        walletOption.classList.add('selected');
+                        gameState.selectedWallet = wallet.address;
+                        confirmBlameBtn.disabled = false;
+                    });
+                    
+                    walletListEl.appendChild(walletOption);
+                });
+            
+            // Reset selection
+            gameState.selectedWallet = null;
+            confirmBlameBtn.disabled = true;
+            
+            // Show modal
+            passBlameModal.style.display = 'flex';
+        }
+
+        // Close the Pass Blame modal
+        function closePassBlameModal() {
+            passBlameModal.style.display = 'none';
+        }
+
+        // Execute the blame pass
+        function executeBlamePass() {
+            if (!gameState.selectedWallet) return;
+            
+            const fromWallet = gameState.wallets.find(w => w.address === gameState.connectedWallet);
+            const toWallet = gameState.wallets.find(w => w.address === gameState.selectedWallet);
+            
+            if (fromWallet && toWallet) {
+                // Update game state
+                fromWallet.isHoldingBlame = false;
+                toWallet.isHoldingBlame = true;
+                
+                // Add to blame chain
+                gameState.blameChain.push({
+                    from: fromWallet.address,
+                    to: toWallet.address,
+                    timestamp: Date.now()
+                });
+                
+                // Update UI
+                renderBlameLedger();
+                updatePassBlameButton();
+                
+                // Add system logs
+                addSystemLog(`[SYSTEM] Blame transferred to ${toWallet.address}`);
+                addSystemLog(`[SYSTEM] Responsibility escaped — for now.`);
+                
+                // Close modal
+                closePassBlameModal();
+            }
+        }
+
+        // Connect wallet simulation
+        function connectWallet() {
+            // Show wallet selector
+            walletSelectorEl.style.display = 'block';
+        }
+
+        // Handle wallet selection
+        function handleWalletSelection(walletType) {
+            // Simulate wallet connection
+            const randomWallet = gameState.wallets[Math.floor(Math.random() * gameState.wallets.length)];
+            gameState.connectedWallet = randomWallet.address;
+            
+            // Update UI
+            connectWalletBtn.style.display = 'none';
+            walletAddressEl.style.display = 'block';
+            walletAddressEl.textContent = randomWallet.address;
+            disconnectWalletBtn.style.display = 'block';
+            walletSelectorEl.style.display = 'none';
+            
+            updatePassBlameButton();
+            
+            // Add system log
+            addSystemLog(`[SYSTEM] Wallet ${randomWallet.address} connected.`);
+        }
+
+        // Disconnect wallet
+        function disconnectWallet() {
+            gameState.connectedWallet = null;
+            
+            // Update UI
+            connectWalletBtn.style.display = 'block';
+            walletAddressEl.style.display = 'none';
+            disconnectWalletBtn.style.display = 'none';
+            
+            updatePassBlameButton();
+            
+            // Add system log
+            addSystemLog(`[SYSTEM] Wallet disconnected.`);
+        }
+
+        // Event listeners
+        passBlameBtn.addEventListener('click', openPassBlameModal);
+        closeModalBtn.addEventListener('click', closePassBlameModal);
+        cancelBlameBtn.addEventListener('click', closePassBlameModal);
+        confirmBlameBtn.addEventListener('click', executeBlamePass);
+        connectWalletBtn.addEventListener('click', connectWallet);
+        disconnectWalletBtn.addEventListener('click', disconnectWallet);
+
+        // Wallet selector event listeners
+        document.querySelectorAll('.wallet-option-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                handleWalletSelection(e.target.dataset.wallet);
+            });
+        });
+
+        // Close wallet selector when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.wallet-container')) {
+                walletSelectorEl.style.display = 'none';
+            }
+        });
+
+        // Initialize the game when the page loads
+        window.addEventListener('load', initGame);
+    </script>
+</body>
+</html>
